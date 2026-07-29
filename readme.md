@@ -1,44 +1,49 @@
 # IS MUNI Course Stats Enhancer
 
-A lightweight JavaScript script that dynamically fetches and displays course success rates directly next to course links on IS MUNI. It prevents you from having to click through multiple pages just to see if a course is easy or hard!
+A browser utility that dynamically fetches and displays course success rates  directly next to course links on IS MUNI. It automates the process of evaluating courses without requiring you to manually click through deep links.
 
 ![IS MUNI Course Stats Screenshot](images/screenshot.png)
 
-## Features
-* **At-a-Glance Success Rates:** Adds a color-coded badge (e.g., `SR: 90%`) next to every course link. Colors scale from Red (low success) to Green (high success).
-* **Detailed Popups:** Click on any badge to view a detailed popup containing the semester, total student count, average grade, and a breakdown of all assigned grades (A, B, C, D, E, F, Z, etc.).
-* **Pass/Fail Highlighting:** Grades in the popup are automatically colored green (pass) or red (fail).
-* **Smart Viewport Loading:** To prevent making 1000+ requests at once and overloading the IS MUNI servers, stats are only fetched for courses that are *currently visible on your screen* when you click the floating **"Load Stats for Visible Courses"** button. Simply scroll down to the courses you are interested in and click the button to load the next batch!
+## Core Features
+* **At-a-Glance Success Rates:** Adds a color-coded badge (e.g., `SR: 90%`) next to course links. Colors automatically scale from red (low success) to green (high success).
+* **Detailed Popups:** Click on any badge to view a detailed popup containing the course code, cleaned course name, semester, total student count, average grade, and a categorized grade breakdown.
+* **Smart Viewport Fetching:** Uses the browser's native `IntersectionObserver` to trigger fetches *only* when a course link actually scrolls into view, keeping network traffic and server load minimal.
+* **Deduplicated Network Requests:** If the same course link appears multiple times on your screen, the script automatically batches them. It loads the invisible iframe only once, updating all associated badges simultaneously.
 
 ---
 
-## How to Use
+## Installation & Usage
 
-There are two ways to use this script: 
+### Option 1: User JavaScript and CSS
+This is a highly popular extension for applying custom scripts and styles to specific websites.
 
-### Method 1: The Quick Way (Browser Developer Console)
-This method is temporary and needs to be repeated every time you refresh the page.
+1. Install **User JavaScript and CSS** for your browser:
+   * **Chrome Web Store:** [User JavaScript and CSS](https://chromewebstore.google.com/detail/nbhcbdghjpllgmfilhnhkllmkecfmpld)
+2. Open [is.muni.cz](https://is.muni.cz/).
+3. Click the extension icon and click **"Add New"** (or create a new rule for `is.muni.cz`).
+4. In the left panel (the **JS** tab), paste the entire script code.
+5. In the URL targeting settings on the right, ensure the rule matches `is.muni.cz`.
+6. Click **Save**. The script will now execute automatically whenever you browse course directories on IS MUNI.
 
-1. Open any page on [is.muni.cz](https://is.muni.cz/) that contains course links (e.g., your study planner or course registration page).
-2. Open the browser's Developer Console by pressing `F12` (or `Ctrl + Shift + J` on Windows / `Cmd + Option + J` on Mac).
-3. Copy the entire JavaScript code and paste it into the Console tab.
-4. Press `Enter`.
-5. A blue button will appear in the bottom-right corner of the screen. Click **"Load Stats for Visible Courses"** to see the magic happen!
+---
 
-### Method 2: The Permanent Way (Browser Extension / Userscript)
-This is the recommended method. The script will run automatically every time you visit IS MUNI.
+### Option 2: Tampermonkey (Standard Userscript Manager)
+A dedicated userscript manager that supports automatic script updates.
 
-1. Install a Userscript manager extension for your browser, such as **[Tampermonkey](https://www.tampermonkey.net/)** or **[Violentmonkey](https://violentmonkey.github.io/)**.
-2. Click on the extension icon and select **"Create a new script"**.
-3. Delete any default code in the editor and paste the provided code.
-4. **Important:** Add this metadata block to the very top of the script so the extension knows where to run it:
+1. Install **Tampermonkey** for your browser:
+   * **Official Website:** [Tampermonkey.net](https://www.tampermonkey.net/)
+   * **Chrome Web Store:** [Tampermonkey for Chrome](https://chromewebstore.google.com/detail/dhdgffkkebhmkfjojejmpbldmpobfkfo)
+   * **Firefox Add-ons:** [Tampermonkey for Firefox](https://addons.mozilla.org/firefox/addon/tampermonkey/)
+   * **Mac App Store:** [Tampermonkey for Safari](https://apps.apple.com/app/tampermonkey/id1482490089)
+2. Click the extension icon and select **"Create a new script"**.
+3. Replace the template code with the full script, ensuring you have the correct metadata block at the very top:
 
 ```javascript
 // ==UserScript==
 // @name         IS MUNI Course Stats Enhancer
 // @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  Displays course success rates on IS MUNI directly next to the links.
+// @version      1.1
+// @description  Displays course success rates and names on IS MUNI next to links as you scroll.
 // @match        *://is.muni.cz/*
 // @grant        none
 // ==/UserScript==
@@ -47,18 +52,20 @@ This is the recommended method. The script will run automatically every time you
     // ... paste the rest of the script here ...
 })();
 ```
-5. Save the script (`Ctrl + S` or `Cmd + S`).
-6. Refresh your IS MUNI page. The floating blue button will now be waiting for you in the bottom right corner!
+4. Save the script (`Ctrl + S` or `Cmd + S`).
 
 ---
 
-## Configuration
+### Option 3: Developer Console (Temporary Run)
+Useful for quick testing without installing extensions.
 
-If you want to change which grades are considered a "pass" or a "fail" (which affects the colors inside the detailed popup), you can edit the `GRADE_CATEGORIES` dictionary at the very top of the script:
+1. Navigate to any page on [is.muni.cz](https://is.muni.cz/) containing course links.
+2. Open the developer tools by pressing `F12` (or `Ctrl + Shift + J` / `Cmd + Option + J`).
+3. Paste the entire script code into the **Console** tab and press **Enter**.
+4. Scroll down to see the loading badges appear as links enter your viewport.
 
-```javascript
-const GRADE_CATEGORIES = {
-    'A': 'pass', 'B': 'pass', 'C': 'pass', 'D': 'pass', 'E': 'pass', 'Z': 'pass', 'P': 'pass',
-    'F': 'fail', '-': 'fail', 'N': 'fail', 'X': 'fail',
-};
-```
+*Note: You can use basically **any** browser extension or add-on that allows you to run custom JavaScript on specific pages. As long as the tool can inject and run this script under the `is.muni.cz` domain, the enhancer will function properly.*
+
+---
+
+Made with ❤️ by Futupas. If you want to thank me, you can always buy me a beer
