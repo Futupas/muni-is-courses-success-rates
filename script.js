@@ -1,183 +1,236 @@
 (async function() {
-    // 1. Inject CSS for the animated dots and badge styling
+    // ==========================================
+    // CONFIGURATION: Define Pass / No Pass grades
+    // ==========================================
+    const GRADE_CATEGORIES = {
+        'A': 'pass', 'B': 'pass', 'C': 'pass', 'D': 'pass', 'E': 'pass', 'Z': 'pass', 'P': 'pass',
+        'F': 'fail', '-': 'fail', 'N': 'fail', 'X': 'fail',
+    };
+
+    const COLORS = {
+        pass: '#4caf50',   // Green
+        fail: '#f44336',   // Red
+        unknown: '#9e9e9e' // Gray
+    };
+
+    // ==========================================
+    // INJECT CSS (Animations, Badges, Tooltip, Popup)
+    // ==========================================
     const style = document.createElement('style');
     style.innerHTML = `
-        .sr-badge {
-            margin-left: 6px;
-            font-size: 0.85em;
-            font-weight: bold;
-            white-space: nowrap;
+        .sr-badge { margin-left: 6px; font-size: 0.85em; font-weight: bold; white-space: nowrap; cursor: pointer; padding: 2px 4px; border-radius: 4px; transition: background 0.2s;}
+        .sr-badge:hover { background: rgba(0,0,0,0.05); }
+        .sr-loading { color: #888; cursor: default; pointer-events: none; }
+        .sr-loading::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
+        @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+        
+        #sr-popup-pnd {
+            position: absolute; background: white; border: 1px solid #ccc; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            padding: 12px; border-radius: 8px; z-index: 999999; display: none;
+            font-family: Arial, sans-serif; font-size: 13px; color: #333; min-width: 220px;
         }
-        .sr-loading { color: #888; }
-        .sr-loading::after {
-            content: '';
-            animation: dots 1.5s steps(4, end) infinite;
-        }
-        @keyframes dots {
-            0% { content: ''; }
-            25% { content: '.'; }
-            50% { content: '..'; }
-            75% { content: '...'; }
-        }
+        .sr-popup-header { font-weight: bold; font-size: 14px; margin-bottom: 8px; border-bottom: 2px solid #eee; padding-bottom: 6px; }
+        .sr-popup-row { display: flex; justify-content: space-between; margin: 4px 0; }
+        .sr-popup-close { float: right; cursor: pointer; color: #aaa; font-weight: bold; }
+        .sr-popup-close:hover { color: #333; }
     `;
     document.head.appendChild(style);
 
-    // Helper: Loads a URL in a hidden iframe
+    // Create the Popup container
+    const popup = document.createElement('div');
+    popup.id = 'sr-popup-pnd';
+    document.body.appendChild(popup);
+
+    // Close popup if clicking anywhere outside of it
+    document.addEventListener('click', (e) => {
+        if (!popup.contains(e.target) && !e.target.classList.contains('sr-badge')) {
+            popup.style.display = 'none';
+        }
+    });
+
+    // ==========================================
+    // HELPER FUNCTIONS
+    // ==========================================
     function loadViaIframe(url) {
         return new Promise((resolve, reject) => {
             const iframe = document.createElement('iframe');
-            iframe.style.position = 'fixed';
-            iframe.style.width = '1px';
-            iframe.style.height = '1px';
-            iframe.style.opacity = '0';
-            iframe.style.pointerEvents = 'none';
+            iframe.style.position = 'fixed'; iframe.style.width = '1px'; iframe.style.height = '1px'; 
+            iframe.style.opacity = '0'; iframe.style.pointerEvents = 'none';
             
             iframe.addEventListener('load', () => {
                 try {
                     const iDoc = iframe.contentDocument || iframe.contentWindow.document;
                     resolve({ iDoc, close: () => iframe.remove() });
-                } catch (e) {
-                    iframe.remove();
-                    reject(e);
-                }
+                } catch (e) { iframe.remove(); reject(e); }
             });
-            iframe.addEventListener('error', () => {
-                iframe.remove();
-                reject(new Error(`Failed to load: ${url}`));
-            });
-
-            iframe.src = url;
-            document.body.appendChild(iframe);
+            iframe.addEventListener('error', () => { iframe.remove(); reject(new Error('Load failed')); });
+            iframe.src = url; document.body.appendChild(iframe);
         });
     }
 
-    // Helper: Determine color based on Success Rate (10 steps from Red to Green)
     function getColorForSuccessRate(sr) {
         if (typeof sr !== 'number' || isNaN(sr)) return 'gray';
-        // Formula: <=50% is index 0. Each 5% adds 1. Max index 9 (95-100%).
         const index = Math.max(0, Math.min(9, Math.floor((sr - 46) / 5)));
-        // HSL Hue: 0 is Red, 120 is Green. 9 steps -> 120/9 = ~13.33 per step.
         const hue = Math.round(index * 13.33); 
         return `hsl(${hue}, 80%, 42%)`;
     }
 
-    // Core scraping logic for a single URL
+    function showPopup(event, stats) {
+        let gradesHtml = '';
+        for (const [grade, data] of Object.entries(stats.grades)) {
+            const type = GRADE_CATEGORIES[grade] || 'unknown';
+            const color = COLORS[type];
+            gradesHtml += `<div class="sr-popup-row" style="color: ${color}">
+                <span>Grade <b>${grade}</b></span> 
+                <span><b>${data.count}</b> <span style="opacity: 0.7; font-size: 0.9em">(${data.percentage}%)</span></span>
+            </div>`;
+        }
+
+        popup.innerHTML = `
+            <div class="sr-popup-close" onclick="document.getElementById('sr-popup-pnd').style.display='none'">✕</div>
+            <div class="sr-popup-header">${stats.courseCode} <span style="font-weight:normal; color:#666;">(${stats.semester})</span></div>
+            <div class="sr-popup-row"><span>Total Students:</span> <b>${stats.totalStudents}</b></div>
+            <div class="sr-popup-row"><span>Success Rate:</span> <b>${stats.successRate}%</b></div>
+            ${stats.average ? `<div class="sr-popup-row"><span>Average:</span> <b>${stats.average}</b></div>` : ''}
+            <div style="border-top: 1px solid #eee; margin: 8px 0;"></div>
+            ${gradesHtml}
+        `;
+        
+        // Position popup near cursor
+        popup.style.display = 'block';
+        popup.style.left = (event.pageX + 15) + 'px';
+        popup.style.top = (event.pageY + 15) + 'px';
+        
+        // Prevent going off-screen to the right
+        const rect = popup.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+            popup.style.left = (window.innerWidth - rect.width - 20) + 'px';
+        }
+    }
+
+    // ==========================================
+    // CORE LOGIC
+    // ==========================================
     async function fetchCourseStats(url, uiSpans) {
-        let iframeStep1, iframeStep2;
+        let iframe1, iframe2;
         try {
-            // STEP 1: Load Course Page
-            iframeStep1 = await loadViaIframe(url);
-            const statsLink = Array.from(iframeStep1.iDoc.querySelectorAll('#app_content > ul > li a'))
+            iframe1 = await loadViaIframe(url);
+            const statsLink = Array.from(iframe1.iDoc.querySelectorAll('#app_content > ul > li a'))
                 .find(a => a.innerText.trim().toLowerCase() === 'nejnovější' && a.href.includes('statistika_znamek'));
             
-            if (!statsLink) throw new Error("No 'nejnovější' link");
+            if (!statsLink) throw new Error("No stats");
             const statsUrl = statsLink.href;
-            iframeStep1.close(); 
+            iframe1.close(); 
 
-            // STEP 2: Load Stats Page
-            iframeStep2 = await loadViaIframe(statsUrl);
-            const table = iframeStep2.iDoc.querySelector('#app_content table.data1');
-            if (!table) throw new Error("No table found");
+            iframe2 = await loadViaIframe(statsUrl);
+            const table = iframe2.iDoc.querySelector('#app_content table.data1');
+            if (!table) throw new Error("No table");
 
             const rows = table.querySelectorAll('tr');
             const headers = Array.from(rows[0].querySelectorAll('th')).map(th => th.innerText.trim());
             const dataCells = Array.from(rows[1].querySelectorAll('td')).map(td => td.innerText.trim());
 
-            const stats = {
-                course: dataCells[0].replace(/\s+/g, ' ').trim(),
-                totalStudents: 0,
-                successRate: null,
-                average: null,
-                grades: {}
-            };
+            // Extract Semester and Course Code from e.g. "PB029 (podzim 2025)"
+            const rawCourseStr = dataCells[0].replace(/\s+/g, ' ').trim();
+            const semesterMatches = [...rawCourseStr.matchAll(/\(([^)]+)\)/g)];
+            const semester = semesterMatches.length ? semesterMatches[semesterMatches.length - 1][1] : 'Unknown Sem';
+            const courseCode = rawCourseStr.replace(/\s*\(.*?\)\s*$/, '');
 
-            // Parse data dynamically and ensure everything is a NUMBER
-            for (let i = 0; i < headers.length; i++) {
+            const stats = { courseCode, semester, totalStudents: 0, successRate: null, average: null, grades: {} };
+
+            for (let i = 1; i < headers.length; i++) {
                 const header = headers[i];
                 const value = dataCells[i];
-
-                if (header === 'Předmět') continue;
-                if (header === 'Celkem studentů') {
-                    stats.totalStudents = parseInt(value, 10) || 0;
-                } else if (header === 'Úspěšně') {
-                    // Extract number from "90 %" -> 90
-                    stats.successRate = parseFloat(value.replace(/[^\d.-]/g, ''));
-                } else if (header === 'Průměr') {
-                    // Convert "2,07" -> 2.07
-                    stats.average = parseFloat(value.replace(',', '.'));
-                } else {
-                    stats.grades[header] = { count: parseInt(value, 10) || 0 };
-                }
+                if (header === 'Celkem studentů') stats.totalStudents = parseInt(value, 10) || 0;
+                else if (header === 'Úspěšně') stats.successRate = parseFloat(value.replace(/[^\d.-]/g, ''));
+                else if (header === 'Průměr') stats.average = parseFloat(value.replace(',', '.'));
+                else stats.grades[header] = { count: parseInt(value, 10) || 0 };
             }
 
-            // Calculate numeric percentages for grades
             if (stats.totalStudents > 0) {
                 for (const grade in stats.grades) {
-                    const count = stats.grades[grade].count;
-                    // Store as a float, e.g., 24.32 instead of "24.32%"
-                    stats.grades[grade].percentage = parseFloat(((count / stats.totalStudents) * 100).toFixed(2));
+                    stats.grades[grade].percentage = parseFloat(((stats.grades[grade].count / stats.totalStudents) * 100).toFixed(2));
                 }
             }
 
-            // Update UI with Success
+            // Update UI Links
             const color = getColorForSuccessRate(stats.successRate);
             uiSpans.forEach(span => {
-                span.className = 'sr-badge'; // removes loading class & dots
+                span.className = 'sr-badge'; 
                 span.innerText = `SR: ${stats.successRate}%`;
                 span.style.color = color;
+                span.title = `Success rate: ${stats.successRate}% (${stats.semester}). Click to view details.`;
+                
+                // Add click listener for popup
+                span.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showPopup(e, stats);
+                });
             });
-
-            return stats;
 
         } catch (error) {
-            // Update UI with Fallback
             uiSpans.forEach(span => {
-                span.className = 'sr-badge'; // removes loading class & dots
-                span.innerText = `SR: ?`;
-                span.style.color = 'gray';
+                span.className = 'sr-badge'; span.innerText = `SR: ?`; span.style.color = 'gray';
+                span.title = 'No statistics available.';
             });
-            return null; // Return null for failed scrapes to keep the console clean
         } finally {
-            if (iframeStep1) iframeStep1.close();
-            if (iframeStep2) iframeStep2.close();
+            if (iframe1) iframe1.close();
+            if (iframe2) iframe2.close();
         }
     }
 
-    async function main() {
-        console.log("Initializing parallel course stats extraction...");
-        const anchorTags = document.querySelectorAll('a[href*="/predmet/"]');
-        
-        // Group DOM elements by unique URL so we don't scrape the same page twice
+    // Finds links, marks them, adds loading UI, and fetches stats
+    function processUnmarkedLinks() {
+        // Find links that haven't been processed yet
+        const anchorTags = document.querySelectorAll('a[href*="/predmet/"]:not([data-sr-processed-pnd="true"])');
+        if (anchorTags.length === 0) return;
+
         const urlMap = new Map();
         
         anchorTags.forEach(a => {
-            // Create and attach the loading UI right next to the link
+            // 1. Mark as processed
+            a.dataset.srProcessedPnd = "true";
+            
+            // 2. Insert animated loading badge
             const span = document.createElement('span');
             span.className = 'sr-badge sr-loading';
             span.innerText = 'SR: ';
             a.insertAdjacentElement('afterend', span);
 
-            if (!urlMap.has(a.href)) {
-                urlMap.set(a.href, []);
-            }
+            if (!urlMap.has(a.href)) urlMap.set(a.href, []);
             urlMap.get(a.href).push(span);
         });
 
-        // Async Mode: Trigger all fetch operations concurrently using Promise.all
-        const promises = Array.from(urlMap.entries()).map(([url, spans]) => 
-            fetchCourseStats(url, spans)
-        );
-
-        // Wait for all iframes and scrapes to finish in parallel
-        const results = await Promise.all(promises);
-        
-        // Print the valid results to the console
-        results.filter(r => r !== null).forEach(stat => {
-            console.log(`✅ Stats for ${stat.course}:`, stat);
+        // Trigger fetches in parallel without blocking the UI
+        Array.from(urlMap.entries()).forEach(([url, spans]) => {
+            fetchCourseStats(url, spans).catch(err => {}); 
         });
-
-        console.log("🎉 All courses processed successfully.");
     }
 
-    await main();
+    // ==========================================
+    // INITIALIZATION & DYNAMIC DOM LISTENER
+    // ==========================================
+    console.log("Starting Course Stats processor...");
+    
+    // Process everything initially on page load
+    processUnmarkedLinks();
+
+    // Setup MutationObserver to watch for dynamic DOM changes (e.g. infinite scroll)
+    const observer = new MutationObserver((mutations) => {
+        let shouldProcess = false;
+        for (const mutation of mutations) {
+            if (mutation.addedNodes.length > 0) {
+                shouldProcess = true;
+                break;
+            }
+        }
+        if (shouldProcess) {
+            processUnmarkedLinks();
+        }
+    });
+
+    // Start observing the whole body for added content
+    observer.observe(document.body, { childList: true, subtree: true });
+
 })();
