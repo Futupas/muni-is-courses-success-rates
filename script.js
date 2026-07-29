@@ -1,20 +1,16 @@
 (async function() {
     // ==========================================
-    // CONFIGURATION: Define Pass / No Pass grades
+    // CONFIGURATION
     // ==========================================
     const GRADE_CATEGORIES = {
         'A': 'pass', 'B': 'pass', 'C': 'pass', 'D': 'pass', 'E': 'pass', 'Z': 'pass', 'P': 'pass',
         'F': 'fail', '-': 'fail', 'N': 'fail', 'X': 'fail',
     };
 
-    const COLORS = {
-        pass: '#4caf50',   // Green
-        fail: '#f44336',   // Red
-        unknown: '#9e9e9e' // Gray
-    };
+    const COLORS = { pass: '#4caf50', fail: '#f44336', unknown: '#9e9e9e' };
 
     // ==========================================
-    // INJECT CSS (Animations, Badges, Tooltip, Popup, Button)
+    // INJECT CSS
     // ==========================================
     const style = document.createElement('style');
     style.innerHTML = `
@@ -33,24 +29,13 @@
         .sr-popup-row { display: flex; justify-content: space-between; margin: 4px 0; }
         .sr-popup-close { float: right; cursor: pointer; color: #aaa; font-weight: bold; }
         .sr-popup-close:hover { color: #333; }
-
-        #sr-load-btn-pnd {
-            position: fixed; bottom: 20px; right: 20px; z-index: 999998;
-            background: #0056b3; color: white; border: none; padding: 12px 16px;
-            border-radius: 20px; font-family: Arial, sans-serif; font-size: 14px; font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2); cursor: pointer; transition: background 0.2s, transform 0.1s;
-        }
-        #sr-load-btn-pnd:hover { background: #004494; }
-        #sr-load-btn-pnd:active { transform: scale(0.95); }
     `;
     document.head.appendChild(style);
 
-    // Create the Popup container
     const popup = document.createElement('div');
     popup.id = 'sr-popup-pnd';
     document.body.appendChild(popup);
 
-    // Close popup if clicking anywhere outside of it
     document.addEventListener('click', (e) => {
         if (!popup.contains(e.target) && !e.target.classList.contains('sr-badge')) {
             popup.style.display = 'none';
@@ -82,17 +67,6 @@
         const index = Math.max(0, Math.min(9, Math.floor((sr - 46) / 5)));
         const hue = Math.round(index * 13.33); 
         return `hsl(${hue}, 80%, 42%)`;
-    }
-
-    // Checks if an element is currently visible in the browser viewport
-    function isElementInViewport(el) {
-        const rect = el.getBoundingClientRect();
-        return (
-            rect.top < (window.innerHeight || document.documentElement.clientHeight) &&
-            rect.bottom > 0 &&
-            rect.left < (window.innerWidth || document.documentElement.clientWidth) &&
-            rect.right > 0
-        );
     }
 
     function showPopup(event, stats) {
@@ -127,9 +101,9 @@
     }
 
     // ==========================================
-    // CORE LOGIC
+    // CORE FETCH LOGIC (Returns raw data, doesn't touch UI directly)
     // ==========================================
-    async function fetchCourseStats(url, uiSpans) {
+    async function fetchCourseStats(url) {
         let iframe1, iframe2;
         try {
             iframe1 = await loadViaIframe(url);
@@ -169,91 +143,114 @@
                     stats.grades[grade].percentage = parseFloat(((stats.grades[grade].count / stats.totalStudents) * 100).toFixed(2));
                 }
             }
-
-            const color = getColorForSuccessRate(stats.successRate);
-            uiSpans.forEach(span => {
-                span.className = 'sr-badge'; 
-                span.innerText = `SR: ${stats.successRate}%`;
-                span.style.color = color;
-                span.title = `Success rate: ${stats.successRate}% (${stats.semester}). Click to view details.`;
-                
-                span.addEventListener('click', (e) => {
-                    e.preventDefault(); e.stopPropagation();
-                    showPopup(e, stats);
-                });
-            });
-
-        } catch (error) {
-            uiSpans.forEach(span => {
-                span.className = 'sr-badge'; span.innerText = `SR: ?`; span.style.color = 'gray';
-                span.title = 'No statistics available.';
-            });
+            return stats;
         } finally {
             if (iframe1) iframe1.close();
             if (iframe2) iframe2.close();
         }
     }
 
-    // Finds links ON SCREEN, marks them, adds loading UI, and fetches stats
-    function processVisibleUnmarkedLinks() {
-        const anchorTags = document.querySelectorAll('a[href*="/predmet/"]:not([data-sr-processed-pnd="true"])');
-        if (anchorTags.length === 0) return 0;
+    // ==========================================
+    // UI PROCESSING & DEDUPLICATION
+    // ==========================================
+    const statsCache = new Map();     // url -> resolved stats
+    const pendingFetches = new Map(); // url -> active promise
 
-        const urlMap = new Map();
-        let processedCount = 0;
-        
-        anchorTags.forEach(a => {
-            // Only process if the link is currently visible on the screen
-            if (isElementInViewport(a)) {
-                a.dataset.srProcessedPnd = "true";
-                
-                const span = document.createElement('span');
-                span.className = 'sr-badge sr-loading';
-                span.innerText = 'SR: ';
-                a.insertAdjacentElement('afterend', span);
+    async function processLinkUI(a) {
+        // Add animated dots immediately
+        const span = document.createElement('span');
+        span.className = 'sr-badge sr-loading';
+        span.innerText = 'SR: ';
+        a.insertAdjacentElement('afterend', span);
 
-                if (!urlMap.has(a.href)) urlMap.set(a.href, []);
-                urlMap.get(a.href).push(span);
-                processedCount++;
+        const url = a.href;
+        let stats;
+
+        try {
+            // Deduplication logic: Don't load iframes twice for identical courses on screen
+            if (statsCache.has(url)) {
+                stats = statsCache.get(url);
+            } else if (pendingFetches.has(url)) {
+                stats = await pendingFetches.get(url); // Wait for the active iframe to finish
+            } else {
+                const fetchPromise = fetchCourseStats(url);
+                pendingFetches.set(url, fetchPromise);
+                stats = await fetchPromise;
+                statsCache.set(url, stats);
+                pendingFetches.delete(url);
             }
-        });
 
-        // Trigger fetches in parallel
-        Array.from(urlMap.entries()).forEach(([url, spans]) => {
-            fetchCourseStats(url, spans).catch(err => {}); 
-        });
+            if (!stats) throw new Error("Stats not available");
 
-        return processedCount; // Return amount of newly marked elements
+            // Apply stats to UI
+            span.className = 'sr-badge'; 
+            span.innerText = `SR: ${stats.successRate}%`;
+            span.style.color = getColorForSuccessRate(stats.successRate);
+            span.title = `Success rate: ${stats.successRate}% (${stats.semester}). Click to view details.`;
+            
+            span.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                showPopup(e, stats);
+            });
+
+        } catch (error) {
+            span.className = 'sr-badge'; span.innerText = `SR: ?`; span.style.color = 'gray';
+            span.title = 'No statistics available.';
+        }
     }
 
     // ==========================================
-    // INITIALIZATION & UI BUTTON
+    // VISIBILITY OBSERVER (Triggered by Scroll natively)
     // ==========================================
-    console.log("Course Stats processor ready. Waiting for manual trigger.");
-    
-    // Create floating manual load button
-    const loadBtn = document.createElement('button');
-    loadBtn.id = 'sr-load-btn-pnd';
-    loadBtn.innerText = 'Load Stats for Visible Courses';
-    document.body.appendChild(loadBtn);
+    const visibilityObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            // If the element is actually visible in the browser window
+            if (entry.isIntersecting) {
+                const a = entry.target;
+                
+                // Stop observing it (we only want to fetch once)
+                observer.unobserve(a); 
 
-    loadBtn.addEventListener('click', () => {
-        const count = processVisibleUnmarkedLinks();
-        
-        // Temporarily change button text to show feedback
-        const originalText = 'Load Stats for Visible Courses';
-        if (count > 0) {
-            loadBtn.innerText = `Loading stats for ${count} courses...`;
-            loadBtn.style.background = '#4caf50'; // Green while loading
-        } else {
-            loadBtn.innerText = 'No new courses visible!';
-            loadBtn.style.background = '#f44336'; // Red if nothing to do
-        }
-        
-        setTimeout(() => {
-            loadBtn.innerText = originalText;
-            loadBtn.style.background = '#0056b3'; // Revert to blue
-        }, 2000);
+                // Mark the element exactly as requested so we ignore it completely in the future
+                a.dataIsMuCoursesPassStatsProcessesPND = true;
+                a.dataset.isMuCoursesPassStatsProcessesPnd = "true";
+                
+                // Start the fetch & UI process
+                processLinkUI(a);
+            }
+        });
+    }, {
+        root: null, // Viewport
+        threshold: 0.1 // Triggers when 10% of the link enters the screen
     });
+
+    // Helper: Finds new courses on the page and tells the observer to watch them
+    function observeNewCourses() {
+        // Ignore links we are already observing, and links we have already processed
+        const links = document.querySelectorAll('a[href*="/predmet/"]:not([data-is-mu-courses-pass-stats-processes-pnd="true"]):not([data-sr-observing="true"])');
+        
+        links.forEach(a => {
+            a.dataset.srObserving = "true"; // Mark as being watched
+            visibilityObserver.observe(a);  // The moment you scroll to it, it will trigger processLinkUI
+        });
+    }
+
+    // ==========================================
+    // INITIALIZATION & DOM CHANGE LISTENER
+    // ==========================================
+    console.log("Course Stats native visibility processor running...");
+    
+    // 1. Observe all links currently on the page
+    observeNewCourses();
+
+    // 2. Watch the DOM for any new courses loaded via AJAX/React
+    const domObserver = new MutationObserver((mutations) => {
+        const hasAddedNodes = mutations.some(m => m.addedNodes.length > 0);
+        if (hasAddedNodes) {
+            observeNewCourses();
+        }
+    });
+    
+    domObserver.observe(document.body, { childList: true, subtree: true });
 
 })();
