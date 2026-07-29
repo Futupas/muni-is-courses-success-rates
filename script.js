@@ -113,22 +113,26 @@
         try {
             iframe1 = await loadViaIframe(url);
             
-            // Extract the full course name from #app_name on the main course page
+            // Extract and clean the full course name from #app_name (Bilingual)
             let courseFullName = '';
             const appNameEl = iframe1.iDoc.querySelector('#app_name');
             if (appNameEl) {
                 const rawName = appNameEl.innerText.replace(/\s+/g, ' ').trim();
                 
-                // Regex matches "Informace o předmětu" and any preceding/succeeding dashes (hyphen, ndash, mdash, horizontal bar, etc.)
+                // Cleans out both Czech and English titles (Informace o předmětu / Course Information) and any dash types
                 courseFullName = rawName
-                    .replace(/^Informace o předmětu\s*[\-–—‐‑‒―\s]+/gi, '') // Cleans the start
-                    .replace(/\s*[\-–—‐‑‒―\s]+Informace o předmětu$/gi, '') // Cleans the end
-                    .replace(/Informace o předmětu/gi, '')                  // General cleanup fallback
+                    .replace(/^(Informace o předmětu|Course Information)\s*[\-–—‐‑‒―\s]+/gi, '')
+                    .replace(/\s*[\-–—‐‑‒―\s]+(Informace o předmětu|Course Information)$/gi, '')
+                    .replace(/Informace o předmětu|Course Information/gi, '')
                     .trim();
             }
 
+            // Matches Czech "nejnovější" OR English "recent" evaluation link
             const statsLink = Array.from(iframe1.iDoc.querySelectorAll('#app_content > ul > li a'))
-                .find(a => a.innerText.trim().toLowerCase() === 'nejnovější' && a.href.includes('statistika_znamek'));
+                .find(a => {
+                    const text = a.innerText.trim().toLowerCase();
+                    return (text === 'nejnovější' || text === 'recent') && a.href.includes('statistika_znamek');
+                });
             
             if (!statsLink) throw new Error("No stats");
             const statsUrl = statsLink.href;
@@ -149,13 +153,19 @@
 
             const stats = { courseCode, courseFullName, semester, totalStudents: 0, successRate: null, average: null, grades: {} };
 
+            // Map columns dynamically by checking both Czech and English headers
             for (let i = 1; i < headers.length; i++) {
                 const header = headers[i];
                 const value = dataCells[i];
-                if (header === 'Celkem studentů') stats.totalStudents = parseInt(value, 10) || 0;
-                else if (header === 'Úspěšně') stats.successRate = parseFloat(value.replace(/[^\d.-]/g, ''));
-                else if (header === 'Průměr') stats.average = parseFloat(value.replace(',', '.'));
-                else stats.grades[header] = { count: parseInt(value, 10) || 0 };
+                if (header === 'Celkem studentů' || header === 'Total Number of Students') {
+                    stats.totalStudents = parseInt(value, 10) || 0;
+                } else if (header === 'Úspěšně' || header === 'Completed') {
+                    stats.successRate = parseFloat(value.replace(/[^\d.-]/g, ''));
+                } else if (header === 'Průměr' || header === 'Average') {
+                    stats.average = parseFloat(value.replace(',', '.'));
+                } else {
+                    stats.grades[header] = { count: parseInt(value, 10) || 0 };
+                }
             }
 
             if (stats.totalStudents > 0) {
@@ -217,7 +227,7 @@
     }
 
     // ==========================================
-    // VISIBILITY OBSERVER (Triggered by Scroll natively)
+    // VISIBILITY OBSERVER (Triggered natively on scroll)
     // ==========================================
     const visibilityObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
@@ -235,7 +245,11 @@
     });
 
     function observeNewCourses() {
-        const links = document.querySelectorAll('a[href*="/predmet/"]:not([data-is-mu-courses-pass-stats-processes-pnd="true"]):not([data-sr-observing="true"])');
+        // Query both Czech /predmet/ and English /course/ links
+        const links = document.querySelectorAll(
+            'a[href*="/predmet/"]:not([data-is-mu-courses-pass-stats-processes-pnd="true"]):not([data-sr-observing="true"]), ' +
+            'a[href*="/course/"]:not([data-is-mu-courses-pass-stats-processes-pnd="true"]):not([data-sr-observing="true"])'
+        );
         
         links.forEach(a => {
             a.dataset.srObserving = "true"; 
