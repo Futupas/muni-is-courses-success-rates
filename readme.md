@@ -9,6 +9,7 @@ A browser utility that dynamically fetches and displays course success rates  di
 * **Detailed Popups:** Click on any badge to view a detailed popup containing the course code, cleaned course name, semester, total student count, average grade, and a categorized grade breakdown.
 * **Smart Viewport Fetching:** Uses the browser's native `IntersectionObserver` to trigger fetches *only* when a course link actually scrolls into view, keeping network traffic and server load minimal.
 * **Deduplicated Network Requests:** If the same course link appears multiple times on your screen, the script automatically batches them. It loads the invisible iframe only once, updating all associated badges simultaneously.
+* **Bilingual:** Works with both English and Czech versions of the website.
 
 ---
 
