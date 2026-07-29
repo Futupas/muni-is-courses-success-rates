@@ -25,9 +25,11 @@
             padding: 12px; border-radius: 8px; z-index: 999999; display: none;
             font-family: Arial, sans-serif; font-size: 13px; color: #333; min-width: 220px;
         }
-        .sr-popup-header { font-weight: bold; font-size: 14px; margin-bottom: 8px; border-bottom: 2px solid #eee; padding-bottom: 6px; }
+        .sr-popup-header { border-bottom: 2px solid #eee; padding-bottom: 6px; margin-bottom: 8px; }
+        .sr-popup-code { font-weight: bold; font-size: 14px; }
+        .sr-popup-name { font-size: 12px; color: #555; margin-top: 3px; line-height: 1.2; font-weight: normal; }
         .sr-popup-row { display: flex; justify-content: space-between; margin: 4px 0; }
-        .sr-popup-close { float: right; cursor: pointer; color: #aaa; font-weight: bold; }
+        .sr-popup-close { float: right; cursor: pointer; color: #aaa; font-weight: bold; margin-left: 10px; }
         .sr-popup-close:hover { color: #333; }
     `;
     document.head.appendChild(style);
@@ -82,7 +84,10 @@
 
         popup.innerHTML = `
             <div class="sr-popup-close" onclick="document.getElementById('sr-popup-pnd').style.display='none'">✕</div>
-            <div class="sr-popup-header">${stats.courseCode} <span style="font-weight:normal; color:#666;">(${stats.semester})</span></div>
+            <div class="sr-popup-header">
+                <div class="sr-popup-code">${stats.courseCode} <span style="font-weight:normal; color:#666;">(${stats.semester})</span></div>
+                ${stats.courseFullName ? `<div class="sr-popup-name">${stats.courseFullName}</div>` : ''}
+            </div>
             <div class="sr-popup-row"><span>Total Students:</span> <b>${stats.totalStudents}</b></div>
             <div class="sr-popup-row"><span>Success Rate:</span> <b>${stats.successRate}%</b></div>
             ${stats.average ? `<div class="sr-popup-row"><span>Average:</span> <b>${stats.average}</b></div>` : ''}
@@ -101,12 +106,27 @@
     }
 
     // ==========================================
-    // CORE FETCH LOGIC (Returns raw data, doesn't touch UI directly)
+    // CORE FETCH LOGIC
     // ==========================================
     async function fetchCourseStats(url) {
         let iframe1, iframe2;
         try {
             iframe1 = await loadViaIframe(url);
+            
+            // Extract the full course name from #app_name on the main course page
+            let courseFullName = '';
+            const appNameEl = iframe1.iDoc.querySelector('#app_name');
+            if (appNameEl) {
+                const rawName = appNameEl.innerText.replace(/\s+/g, ' ').trim();
+                
+                // Regex matches "Informace o předmětu" and any preceding/succeeding dashes (hyphen, ndash, mdash, horizontal bar, etc.)
+                courseFullName = rawName
+                    .replace(/^Informace o předmětu\s*[\-–—‐‑‒―\s]+/gi, '') // Cleans the start
+                    .replace(/\s*[\-–—‐‑‒―\s]+Informace o předmětu$/gi, '') // Cleans the end
+                    .replace(/Informace o předmětu/gi, '')                  // General cleanup fallback
+                    .trim();
+            }
+
             const statsLink = Array.from(iframe1.iDoc.querySelectorAll('#app_content > ul > li a'))
                 .find(a => a.innerText.trim().toLowerCase() === 'nejnovější' && a.href.includes('statistika_znamek'));
             
@@ -127,7 +147,7 @@
             const semester = semesterMatches.length ? semesterMatches[semesterMatches.length - 1][1] : 'Unknown Sem';
             const courseCode = rawCourseStr.replace(/\s*\(.*?\)\s*$/, '');
 
-            const stats = { courseCode, semester, totalStudents: 0, successRate: null, average: null, grades: {} };
+            const stats = { courseCode, courseFullName, semester, totalStudents: 0, successRate: null, average: null, grades: {} };
 
             for (let i = 1; i < headers.length; i++) {
                 const header = headers[i];
@@ -153,11 +173,10 @@
     // ==========================================
     // UI PROCESSING & DEDUPLICATION
     // ==========================================
-    const statsCache = new Map();     // url -> resolved stats
-    const pendingFetches = new Map(); // url -> active promise
+    const statsCache = new Map();     
+    const pendingFetches = new Map(); 
 
     async function processLinkUI(a) {
-        // Add animated dots immediately
         const span = document.createElement('span');
         span.className = 'sr-badge sr-loading';
         span.innerText = 'SR: ';
@@ -167,11 +186,10 @@
         let stats;
 
         try {
-            // Deduplication logic: Don't load iframes twice for identical courses on screen
             if (statsCache.has(url)) {
                 stats = statsCache.get(url);
             } else if (pendingFetches.has(url)) {
-                stats = await pendingFetches.get(url); // Wait for the active iframe to finish
+                stats = await pendingFetches.get(url);
             } else {
                 const fetchPromise = fetchCourseStats(url);
                 pendingFetches.set(url, fetchPromise);
@@ -182,7 +200,6 @@
 
             if (!stats) throw new Error("Stats not available");
 
-            // Apply stats to UI
             span.className = 'sr-badge'; 
             span.innerText = `SR: ${stats.successRate}%`;
             span.style.color = getColorForSuccessRate(stats.successRate);
@@ -204,34 +221,25 @@
     // ==========================================
     const visibilityObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
-            // If the element is actually visible in the browser window
             if (entry.isIntersecting) {
                 const a = entry.target;
-                
-                // Stop observing it (we only want to fetch once)
                 observer.unobserve(a); 
-
-                // Mark the element exactly as requested so we ignore it completely in the future
                 a.dataIsMuCoursesPassStatsProcessesPND = true;
                 a.dataset.isMuCoursesPassStatsProcessesPnd = "true";
-                
-                // Start the fetch & UI process
                 processLinkUI(a);
             }
         });
     }, {
-        root: null, // Viewport
-        threshold: 0.1 // Triggers when 10% of the link enters the screen
+        root: null, 
+        threshold: 0.1 
     });
 
-    // Helper: Finds new courses on the page and tells the observer to watch them
     function observeNewCourses() {
-        // Ignore links we are already observing, and links we have already processed
         const links = document.querySelectorAll('a[href*="/predmet/"]:not([data-is-mu-courses-pass-stats-processes-pnd="true"]):not([data-sr-observing="true"])');
         
         links.forEach(a => {
-            a.dataset.srObserving = "true"; // Mark as being watched
-            visibilityObserver.observe(a);  // The moment you scroll to it, it will trigger processLinkUI
+            a.dataset.srObserving = "true"; 
+            visibilityObserver.observe(a); 
         });
     }
 
@@ -240,10 +248,8 @@
     // ==========================================
     console.log("Course Stats native visibility processor running...");
     
-    // 1. Observe all links currently on the page
     observeNewCourses();
 
-    // 2. Watch the DOM for any new courses loaded via AJAX/React
     const domObserver = new MutationObserver((mutations) => {
         const hasAddedNodes = mutations.some(m => m.addedNodes.length > 0);
         if (hasAddedNodes) {
