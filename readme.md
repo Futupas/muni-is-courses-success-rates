@@ -1,72 +1,48 @@
-# IS MUNI Course Stats Enhancer
+# IS MUNI Course Stats Enhancer (Web Extension)
 
-A browser utility that dynamically fetches and displays course success rates  directly next to course links on IS MUNI. It automates the process of evaluating courses without requiring you to manually click through deep links.
+A Manifest V3 browser extension for Google Chrome, Mozilla Firefox, Microsoft Edge, and Apple Safari. It dynamically fetches and displays course success rates, full course names, and graded evaluations directly next to course links on IS MUNI.
 
-![IS MUNI Course Stats Screenshot](images/screenshot.png)
+## Features
 
-## Core Features
-* **At-a-Glance Success Rates:** Adds a color-coded badge (e.g., `SR: 90%`) next to course links. Colors automatically scale from red (low success) to green (high success).
-* **Detailed Popups:** Click on any badge to view a detailed popup containing the course code, cleaned course name, semester, total student count, average grade, and a categorized grade breakdown.
-* **Smart Viewport Fetching:** Uses the browser's native `IntersectionObserver` to trigger fetches *only* when a course link actually scrolls into view, keeping network traffic and server load minimal.
-* **Deduplicated Network Requests:** If the same course link appears multiple times on your screen, the script automatically batches them. It loads the invisible iframe only once, updating all associated badges simultaneously.
-* **Bilingual:** Works with both English and Czech versions of the website.
-
----
-
-## Installation & Usage
-
-### Option 1: User JavaScript and CSS
-This is a highly popular extension for applying custom scripts and styles to specific websites.
-
-1. Install **User JavaScript and CSS** for your browser:
-   * **Chrome Web Store:** [User JavaScript and CSS](https://chromewebstore.google.com/detail/nbhcbdghjpllgmfilhnhkllmkecfmpld)
-2. Open [is.muni.cz](https://is.muni.cz/).
-3. Click the extension icon and click **"Add New"** (or create a new rule for `is.muni.cz`).
-4. In the left panel (the **JS** tab), paste the entire script code.
-5. In the URL targeting settings on the right, ensure the rule matches `is.muni.cz`.
-6. Click **Save**. The script will now execute automatically whenever you browse course directories on IS MUNI.
+* **At-a-Glance Success Rates:** Adds a color-coded badge (e.g., `SR: 90%`) next to course links. Colors scale automatically from red (low success) to green (high success).
+* **On/Off Toolbar Toggle:** A clean extension popup bubble containing a sliding toggle switch. Turning the extension off instantly cleans up the page (removes badges, stylesheets, and popup DOM elements) without requiring a reload.
+* **Bilingual Support:** Natively supports both Czech and English IS MUNI interfaces.
+* **Smart Viewport Fetching:** Uses the browser's native `IntersectionObserver` to trigger fetches *only* when a course link scrolls into your active viewport.
+* **Request Deduplication:** If identical course links appear on your screen simultaneously, the extension batches them—loading the invisible iframe only once to update all matching badges.
+* **Title Cleaning:** Pulls the actual course name from the course home page and cleanly filters out MUNI clutter phrases (e.g., `"Informace o předmětu"` or `"Course Information"`) supporting multiple dash formats (`-`, `–`, `—`).
 
 ---
 
-### Option 2: Tampermonkey (Standard Userscript Manager)
-A dedicated userscript manager that supports automatic script updates.
+## File Structure
 
-1. Install **Tampermonkey** for your browser:
-   * **Official Website:** [Tampermonkey.net](https://www.tampermonkey.net/)
-   * **Chrome Web Store:** [Tampermonkey for Chrome](https://chromewebstore.google.com/detail/dhdgffkkebhmkfjojejmpbldmpobfkfo)
-   * **Firefox Add-ons:** [Tampermonkey for Firefox](https://addons.mozilla.org/firefox/addon/tampermonkey/)
-   * **Mac App Store:** [Tampermonkey for Safari](https://apps.apple.com/app/tampermonkey/id1482490089)
-2. Click the extension icon and select **"Create a new script"**.
-3. Replace the template code with the full script, ensuring you have the correct metadata block at the very top:
-
-```javascript
-// ==UserScript==
-// @name         IS MUNI Course Stats Enhancer
-// @namespace    http://tampermonkey.net/
-// @version      1.1
-// @description  Displays course success rates and names on IS MUNI next to links as you scroll.
-// @match        *://is.muni.cz/*
-// @grant        none
-// ==/UserScript==
-
-(async function() {
-    // ... paste the rest of the script here ...
-})();
-```
-4. Save the script (`Ctrl + S` or `Cmd + S`).
+* `manifest.json` — The extension configuration file declaring matches, popup actions, and permissions.
+* `popup.html` — The layout for the sliding switch inside the toolbar popup.
+* `popup.js` — Handles local storage state and dispatches live toggle signals to the open tabs.
+* `content.js` — The core visibility-based parser and iframe scraper.
+* `icon.png` — The extension icon (can be generated using our custom icon generator tool).
 
 ---
 
-### Option 3: Developer Console (Temporary Run)
-Useful for quick testing without installing extensions.
+## Local Installation
 
-1. Navigate to any page on [is.muni.cz](https://is.muni.cz/) containing course links.
-2. Open the developer tools by pressing `F12` (or `Ctrl + Shift + J` / `Cmd + Option + J`).
-3. Paste the entire script code into the **Console** tab and press **Enter**.
-4. Scroll down to see the loading badges appear as links enter your viewport.
+### Google Chrome / Microsoft Edge / Brave
+1. Clone or download this branch to your computer.
+2. Open your browser and navigate to `chrome://extensions/`.
+3. Enable **Developer mode** using the toggle switch in the top right corner.
+4. Click **Load unpacked** in the top left.
+5. Select the folder containing these files.
 
-*Note: You can use basically **any** browser extension or add-on that allows you to run custom JavaScript on specific pages. As long as the tool can inject and run this script under the `is.muni.cz` domain, the enhancer will function properly.*
+### Mozilla Firefox
+1. Open Firefox and navigate to `about:debugging#/runtime/this-firefox`.
+2. Click **Load Temporary Add-on...**
+3. Select any file in your extension folder (e.g., `manifest.json`).
 
+### Apple Safari
+1. Open the **Develop** menu in Safari's settings and check **Allow Unsigned Extensions**.
+2. Because Apple requires extensions to be wrapped inside native Mac Apps, you must compile the folder using Xcode. Run the following command in your macOS terminal:
+    ```bash
+    xcrun safari-web-extension-converter /path/to/your/extension-folder
+    ```
 ---
 
 Made with ❤️ by Futupas. If you want to thank me, you can always buy me a beer
