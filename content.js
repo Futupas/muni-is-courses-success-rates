@@ -71,14 +71,36 @@ function showPopup(event, stats) {
         ${gradesHtml}
     `;
     
+    // 1. Render the popup off-screen first to measure its dynamic height/width
     popup.style.display = 'block';
-    popup.style.left = (event.pageX + 15) + 'px';
-    popup.style.top = (event.pageY + 15) + 'px';
+    popup.style.visibility = 'hidden';
+    popup.style.left = '0px';
+    popup.style.top = '0px';
     
     const rect = popup.getBoundingClientRect();
-    if (rect.right > window.innerWidth) {
-        popup.style.left = (window.innerWidth - rect.width - 20) + 'px';
+    const popupWidth = rect.width;
+    const popupHeight = rect.height;
+
+    // 2. Base position (defaulting to bottom-right of the cursor)
+    let posX = event.pageX + 15;
+    let posY = event.pageY + 15;
+
+    // 3. Right boundary check (flip to left side of cursor if it overflows)
+    if (event.clientX + 15 + popupWidth > window.innerWidth) {
+        posX = event.pageX - popupWidth - 15;
     }
+    if (posX < 10) posX = 10; // Prevent pushing off left edge
+
+    // 4. Bottom boundary check (flip to above cursor if it overflows)
+    if (event.clientY + 15 + popupHeight > window.innerHeight) {
+        posY = event.pageY - popupHeight - 15;
+    }
+    if (posY < 10) posY = 10; // Prevent pushing off top edge
+
+    // 5. Position and show cleanly (no flashing/jumping)
+    popup.style.left = posX + 'px';
+    popup.style.top = posY + 'px';
+    popup.style.visibility = 'visible';
 
     document.getElementById('sr-close-pnd-btn').onclick = () => popup.style.display = 'none';
 }
