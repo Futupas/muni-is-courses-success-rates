@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>MUNI Extension Icon Generator</title>
+  <title>MUNI Extension Icon Generator Pro v2</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #f3f4f6;
+      background-color: #f0f2f5;
       color: #1f2937;
       margin: 0;
       padding: 20px;
@@ -19,31 +19,33 @@
       background: white;
       padding: 24px;
       border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
       display: flex;
       gap: 30px;
-      max-width: 800px;
+      max-width: 900px;
       width: 100%;
     }
     .panel-controls {
-      flex: 1;
+      flex: 1.3;
       display: flex;
       flex-direction: column;
       gap: 16px;
-      max-height: 80vh;
+      max-height: 85vh;
       overflow-y: auto;
-      padding-right: 10px;
+      padding-right: 15px;
     }
     .panel-preview {
+      flex: 0.7;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 20px;
-      width: 280px;
+      border-left: 1px solid #e5e7eb;
+      padding-left: 20px;
     }
-    h2 { margin: 0 0 10px 0; font-size: 1.4rem; color: #111827; }
-    h3 { margin: 10px 0 5px 0; font-size: 1rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; color: #4b5563; }
+    h2 { margin: 0 0 5px 0; font-size: 1.4rem; color: #111827; }
+    h3 { margin: 15px 0 8px 0; font-size: 0.95rem; border-bottom: 2px solid #f3f4f6; padding-bottom: 4px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.05em; }
     
     .control-group {
       display: flex;
@@ -53,32 +55,35 @@
     label { font-size: 0.85rem; font-weight: 600; color: #374151; display: flex; justify-content: space-between; }
     label span { font-weight: normal; color: #6b7280; }
     
-    input[type="range"] { width: 100%; }
+    input[type="range"] { width: 100%; cursor: pointer; }
     select, input[type="file"] {
       padding: 8px;
       border: 1px solid #d1d5db;
       border-radius: 6px;
       background: #f9fafb;
       font-size: 0.9rem;
+      outline: none;
     }
+    select:focus { border-color: #0056b3; }
     
-    .color-row {
-      display: flex;
+    /* Consolidated Bar Row styling */
+    .bar-row {
+      display: grid;
+      grid-template-columns: 50px 35px 1fr 40px;
       gap: 10px;
       align-items: center;
+      background: #f9fafb;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #f3f4f6;
     }
-    .color-picker-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      flex: 1;
-      gap: 4px;
-    }
-    .color-picker-wrapper span { font-size: 0.75rem; color: #4b5563; }
+    .bar-label { font-size: 0.85rem; font-weight: bold; color: #4b5563; }
+    
     input[type="color"] {
-      border: none;
+      border: 1px solid #d1d5db;
+      padding: 0;
       width: 100%;
-      height: 30px;
+      height: 28px;
       cursor: pointer;
       border-radius: 4px;
       background: none;
@@ -86,12 +91,12 @@
 
     #preview-canvas {
       border: 2px dashed #d1d5db;
-      background-color: #f9fafb;
-      image-rendering: pixelated; /* Keeps it sharp at 256px */
+      background-color: #fafafa;
+      image-rendering: pixelated;
       width: 256px;
       height: 256px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
 
     button {
@@ -107,6 +112,17 @@
       transition: background 0.2s;
     }
     button:hover { background-color: #004494; }
+    
+    .info-text {
+      font-size: 0.75rem;
+      color: #6b7280;
+      line-height: 1.3;
+    }
+    #bars-control-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
   </style>
 </head>
 <body>
@@ -114,108 +130,91 @@
 <div class="container">
   <!-- LEFT: CONTROLS PANEL -->
   <div class="panel-controls">
-    <h2>Icon Parameters</h2>
+    <h2>MUNI Icon Engine v2</h2>
     
-    <!-- Image Loader -->
+    <!-- Base Image Input -->
     <div class="control-group">
-      <label>MUNI Base Image <span>(PNG/JPG)</span></label>
+      <label>1. Upload Logo Base <span>(PNG/JPG)</span></label>
       <input type="file" id="image-loader" accept="image/*">
     </div>
 
-    <!-- Image Transformation -->
-    <h3>Base Image Transform</h3>
+    <!-- Scale Control -->
+    <h3>Logo Configuration</h3>
     <div class="control-group">
       <label>Logo Scale <span id="val-scale">75%</span></label>
       <input type="range" id="param-scale" min="10" max="150" value="75">
     </div>
     <div class="control-group">
-      <label>Logo Opacity <span id="val-opacity">1.0</span></label>
+      <label>Logo Opacity <span id="val-opacity">1.00</span></label>
       <input type="range" id="param-opacity" min="0" max="100" value="100">
     </div>
 
-    <!-- Stats Bars Configurations -->
+    <!-- Unified Bar Configs -->
     <h3>Stats Bars Properties</h3>
     <div class="control-group">
-      <label>Global Position X Offset <span id="val-bx">64px</span></label>
-      <input type="range" id="param-bx" min="0" max="128" value="64">
-    </div>
-    <div class="control-group">
-      <label>Baseline Position Y <span id="val-by">115px</span></label>
-      <input type="range" id="param-by" min="0" max="128" value="115">
+      <label>Number of Bars <span id="val-count" style="font-weight:bold; color:#0056b3;">4</span></label>
+      <input type="range" id="param-count" min="1" max="8" value="4">
     </div>
     <div class="control-group">
       <label>Bar Width <span id="val-bw">10px</span></label>
-      <input type="range" id="param-bw" min="2" max="30" value="10">
+      <input type="range" id="param-bw" min="2" max="24" value="10">
     </div>
     <div class="control-group">
       <label>Bar Spacing / Gap <span id="val-bg">4px</span></label>
-      <input type="range" id="param-bg" min="0" max="20" value="4">
+      <input type="range" id="param-bg" min="0" max="16" value="4">
     </div>
     <div class="control-group">
-      <label>Corner Rounding <span id="val-br">3px</span></label>
+      <label>Bar Corner Rounding <span id="val-br">3px</span></label>
       <input type="range" id="param-br" min="0" max="10" value="3">
     </div>
 
-    <!-- Bar Heights -->
-    <h3>Individual Bar Heights</h3>
-    <div class="color-row">
-      <div class="control-group" style="flex:1;">
-        <label>Bar 1</label>
-        <input type="range" id="param-h1" min="0" max="100" value="20">
-      </div>
-      <div class="control-group" style="flex:1;">
-        <label>Bar 2</label>
-        <input type="range" id="param-h2" min="0" max="100" value="45">
-      </div>
-      <div class="control-group" style="flex:1;">
-        <label>Bar 3</label>
-        <input type="range" id="param-h3" min="0" max="100" value="65">
-      </div>
-      <div class="control-group" style="flex:1;">
-        <label>Bar 4</label>
-        <input type="range" id="param-h4" min="0" max="100" value="95">
-      </div>
+    <!-- Dynamic Bar Controls Container -->
+    <h3>Bar Heights & Colors <span>(Capped to Logo Height: <span id="val-cap-px">90px</span>)</span></h3>
+    <div id="bars-control-container">
+      <!-- Generated dynamically by rebuildBarsUI() -->
     </div>
 
-    <!-- Bar Colors -->
-    <h3>Bar Colors</h3>
-    <div class="color-row">
-      <div class="color-picker-wrapper">
-        <input type="color" id="param-c1" value="#000000">
-        <span>Bar 1</span>
-      </div>
-      <div class="color-picker-wrapper">
-        <input type="color" id="param-c2" value="#4caf50">
-        <span>Bar 2</span>
-      </div>
-      <div class="color-picker-wrapper">
-        <input type="color" id="param-c3" value="#000000">
-        <span>Bar 3</span>
-      </div>
-      <div class="color-picker-wrapper">
-        <input type="color" id="param-c4" value="#4caf50">
-        <span>Bar 4</span>
-      </div>
-    </div>
-
-    <!-- Blending Options -->
-    <h3>Composition & Background</h3>
+    <!-- Advanced Composition -->
+    <h3>Mixing & Background</h3>
     <div class="control-group">
-      <label>Blend Mode</label>
+      <label>Mix Blend Mode <span>(Composite Operation)</span></label>
       <select id="param-blend">
-        <option value="source-over">Normal (Overlay)</option>
-        <option value="multiply">Multiply (Darken)</option>
-        <option value="screen">Screen (Lighten)</option>
-        <option value="overlay">Overlay</option>
-        <option value="darken">Darken</option>
-        <option value="lighten">Lighten</option>
-        <option value="color-dodge">Color Dodge</option>
-        <option value="color-burn">Color Burn</option>
-        <option value="destination-over">Behind Logo (Destination Over)</option>
+        <optgroup label="Standard Blend Modes">
+          <option value="source-over" selected>Normal (Overlay)</option>
+          <option value="multiply">Multiply (Darken)</option>
+          <option value="screen">Screen (Lighten)</option>
+          <option value="overlay">Overlay</option>
+          <option value="darken">Darken</option>
+          <option value="lighten">Lighten</option>
+          <option value="hard-light">Hard Light</option>
+          <option value="soft-light">Soft Light</option>
+          <option value="color-dodge">Color Dodge</option>
+          <option value="color-burn">Color Burn</option>
+          <option value="difference">Difference</option>
+          <option value="exclusion">Exclusion</option>
+        </optgroup>
+        <optgroup label="Alpha Compositing">
+          <option value="destination-over">Behind Logo (Destination Over)</option>
+          <option value="source-in">Source In</option>
+          <option value="source-out">Source Out</option>
+          <option value="source-atop">Source Atop</option>
+          <option value="destination-in">Destination In</option>
+          <option value="destination-out">Destination Out</option>
+          <option value="destination-atop">Destination Atop</option>
+          <option value="lighter">Lighter</option>
+          <option value="xor">XOR</option>
+        </optgroup>
+        <optgroup label="Color Compositing">
+          <option value="hue">Hue</option>
+          <option value="saturation">Saturation</option>
+          <option value="color">Color</option>
+          <option value="luminosity">Luminosity</option>
+        </optgroup>
       </select>
     </div>
-    <div class="control-group" style="flex-direction: row; align-items: center; justify-content: space-between;">
-      <label style="margin: 0;">Use Solid Background</label>
+    
+    <div class="control-group" style="flex-direction: row; align-items: center; justify-content: space-between; margin-top: 5px;">
+      <label style="margin: 0;">Solid Background</label>
       <input type="checkbox" id="param-bg-check">
     </div>
     <div class="control-group" id="bg-color-group" style="display:none;">
@@ -225,12 +224,13 @@
 
   </div>
 
-  <!-- RIGHT: CANVAS PREVIEW -->
+  <!-- RIGHT: PREVIEW PANEL -->
   <div class="panel-preview">
     <canvas id="preview-canvas" width="128" height="128"></canvas>
-    <p style="font-size:0.8rem; color:#6b7280; text-align:center; margin:0;">
-      Preview is scaled up to 256x256. <br>Downloaded asset will be exactly 128x128.
-    </p>
+    <div class="info-text" style="text-align: center;">
+      <b>Dynamic Centering Active:</b><br>
+      X and Y baselines calculate automatically so the tallest bar is vertically and horizontally centered on the canvas.
+    </div>
     <button id="btn-download">Download icon.png</button>
   </div>
 </div>
@@ -239,23 +239,39 @@
   const canvas = document.getElementById('preview-canvas');
   const ctx = canvas.getContext('2d');
   
-  // Loaded image reference
   let loadedImage = null;
 
-  // Trigger drawing on any change
-  const inputs = document.querySelectorAll('input, select');
-  inputs.forEach(input => {
+  // Active configurations in memory to prevent value resets when changing count
+  let barsData = [
+    { color: '#000000', height: 30 },
+    { color: '#4caf50', height: 55 },
+    { color: '#000000', height: 75 },
+    { color: '#4caf50', height: 100 },
+    { color: '#000000', height: 50 },
+    { color: '#4caf50', height: 70 },
+    { color: '#000000', height: 85 },
+    { color: '#4caf50', height: 95 }
+  ];
+
+  // Global static listeners
+  const staticInputs = document.querySelectorAll('#param-scale, #param-opacity, #param-bw, #param-bg, #param-br, #param-blend, #param-bg-check, #param-bg-color');
+  staticInputs.forEach(input => {
     input.addEventListener('input', () => {
       updateLabels();
       draw();
     });
   });
 
-  // Background checkbox visibility toggle
   const bgCheck = document.getElementById('param-bg-check');
   const bgColorGroup = document.getElementById('bg-color-group');
   bgCheck.addEventListener('change', () => {
     bgColorGroup.style.display = bgCheck.checked ? 'flex' : 'none';
+  });
+
+  const barCountInput = document.getElementById('param-count');
+  barCountInput.addEventListener('input', () => {
+    rebuildBarsUI();
+    draw();
   });
 
   // Handle uploaded local image
@@ -266,6 +282,7 @@
       const img = new Image();
       img.onload = function() {
         loadedImage = img;
+        updateLabels();
         draw();
       };
       img.src = event.target.result;
@@ -275,26 +292,80 @@
     }
   });
 
-  // Update text values displayed next to the sliders
+  // Dynamic DOM UI Builder for changing bar counts
+  function rebuildBarsUI() {
+    const container = document.getElementById('bars-control-container');
+    const count = parseInt(barCountInput.value, 10);
+    container.innerHTML = ''; // Clear
+
+    for (let i = 0; i < count; i++) {
+      // Ensure state array element exists
+      if (!barsData[i]) {
+        barsData[i] = { color: i % 2 === 0 ? '#000000' : '#4caf50', height: 50 };
+      }
+
+      const row = document.createElement('div');
+      row.className = 'bar-row';
+      row.innerHTML = `
+        <span class="bar-label">Bar ${i + 1}</span>
+        <input type="color" id="param-c-${i}" value="${barsData[i].color}">
+        <input type="range" id="param-h-${i}" min="0" max="100" value="${barsData[i].height}">
+        <span id="val-h-${i}" style="font-size: 0.8rem; text-align: right; color:#6b7280;">${barsData[i].height}%</span>
+      `;
+
+      container.appendChild(row);
+
+      // Event Listeners linked directly to state array
+      row.querySelector(`#param-c-${i}`).addEventListener('input', (e) => {
+        barsData[i].color = e.target.value;
+        draw();
+      });
+
+      row.querySelector(`#param-h-${i}`).addEventListener('input', (e) => {
+        barsData[i].height = parseInt(e.target.value, 10);
+        updateLabels();
+        draw();
+      });
+    }
+    updateLabels();
+  }
+
+  function getMaxHeightLimit() {
+    if (loadedImage) {
+      const scale = document.getElementById('param-scale').value / 100;
+      return loadedImage.height * scale;
+    }
+    return 90; // Default placeholder size
+  }
+
   function updateLabels() {
+    const maxLimit = getMaxHeightLimit();
+    const count = parseInt(barCountInput.value, 10);
+
     document.getElementById('val-scale').innerText = document.getElementById('param-scale').value + '%';
     document.getElementById('val-opacity').innerText = (document.getElementById('param-opacity').value / 100).toFixed(2);
-    document.getElementById('val-bx').innerText = document.getElementById('param-bx').value + 'px';
-    document.getElementById('val-by').innerText = document.getElementById('param-by').value + 'px';
     document.getElementById('val-bw').innerText = document.getElementById('param-bw').value + 'px';
     document.getElementById('val-bg').innerText = document.getElementById('param-bg').value + 'px';
     document.getElementById('val-br').innerText = document.getElementById('param-br').value + 'px';
+    document.getElementById('val-count').innerText = count;
+    document.getElementById('val-cap-px').innerText = Math.round(maxLimit) + 'px';
+
+    for (let i = 0; i < count; i++) {
+      const readout = document.getElementById(`val-h-${i}`);
+      if (readout) {
+        const valPercent = barsData[i].height;
+        const valPx = Math.round((valPercent / 100) * maxLimit);
+        readout.innerText = `${valPercent}% (${valPx}px)`;
+      }
+    }
   }
 
-  // Draw placeholder when there's no uploaded file
   function drawPlaceholder() {
-    // Elegant Blue MUNI Circle
     ctx.fillStyle = '#0056b3';
     ctx.beginPath();
     ctx.arc(64, 64, 45, 0, Math.PI * 2);
     ctx.fill();
     
-    // "IS" Text representation
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 36px sans-serif';
     ctx.textAlign = 'center';
@@ -302,18 +373,15 @@
     ctx.fillText('IS', 64, 64);
   }
 
-  // Main draw loop
   function draw() {
-    // Clear canvas
     ctx.clearRect(0, 0, 128, 128);
 
-    // Apply Solid Background if checked
     if (bgCheck.checked) {
       ctx.fillStyle = document.getElementById('param-bg-color').value;
       ctx.fillRect(0, 0, 128, 128);
     }
 
-    // Step 1: Draw base image (or placeholder)
+    // 1. Render Base Image / Placeholder
     ctx.save();
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = document.getElementById('param-opacity').value / 100;
@@ -330,42 +398,41 @@
     }
     ctx.restore();
 
-    // Step 2: Apply Custom Blend Modes and Render Bars
+    // 2. Render Custom Centered Dynamic Bar Graph
     ctx.save();
     ctx.globalCompositeOperation = document.getElementById('param-blend').value;
 
-    const baseLineX = parseInt(document.getElementById('param-bx').value, 10);
-    const baseLineY = parseInt(document.getElementById('param-by').value, 10);
+    const count = parseInt(barCountInput.value, 10);
     const width = parseInt(document.getElementById('param-bw').value, 10);
     const gap = parseInt(document.getElementById('param-bg').value, 10);
     const radius = parseInt(document.getElementById('param-br').value, 10);
+    const maxLimit = getMaxHeightLimit();
 
-    const heights = [
-      parseInt(document.getElementById('param-h1').value, 10) * 0.4, // scaled down to fit cleanly
-      parseInt(document.getElementById('param-h2').value, 10) * 0.4,
-      parseInt(document.getElementById('param-h3').value, 10) * 0.4,
-      parseInt(document.getElementById('param-h4').value, 10) * 0.4
-    ];
+    const heights = [];
+    const colors = [];
 
-    const colors = [
-      document.getElementById('param-c1').value,
-      document.getElementById('param-c2').value,
-      document.getElementById('param-c3').value,
-      document.getElementById('param-c4').value
-    ];
+    for (let i = 0; i < count; i++) {
+      heights.push((barsData[i].height / 100) * maxLimit);
+      colors.push(barsData[i].color);
+    }
 
-    // Calculate baseline start X so the bar chart remains grouped perfectly
-    const totalWidth = (width * 4) + (gap * 3);
-    const startX = baseLineX - (totalWidth / 2);
+    // DYNAMIC CENTERING MATH:
+    // Centered X: Calculate total width based on dynamic bar count and gaps
+    const totalWidth = (width * count) + (gap * (count - 1));
+    const startX = 64 - (totalWidth / 2);
 
-    for (let i = 0; i < 4; i++) {
+    // Centered Y: Lock tallest bar midpoint vertically to 64
+    const tallestBarHeight = Math.max(...heights, 0);
+    const baselineY = 64 + (tallestBarHeight / 2);
+
+    for (let i = 0; i < count; i++) {
       const barH = heights[i];
+      if (barH <= 0) continue;
+
       const barX = startX + i * (width + gap);
-      const barY = baseLineY - barH;
+      const barY = baselineY - barH;
 
       ctx.fillStyle = colors[i];
-      
-      // Draw path with rounded corners
       ctx.beginPath();
       ctx.roundRect(barX, barY, width, barH, radius);
       ctx.fill();
@@ -374,7 +441,6 @@
     ctx.restore();
   }
 
-  // Trigger Download Action
   document.getElementById('btn-download').addEventListener('click', () => {
     const link = document.createElement('a');
     link.download = 'icon.png';
@@ -383,7 +449,7 @@
   });
 
   // Initialize
-  updateLabels();
+  rebuildBarsUI();
   draw();
 </script>
 
