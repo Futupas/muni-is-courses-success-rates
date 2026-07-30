@@ -22,7 +22,7 @@ This is a highly popular extension for applying custom scripts and styles to spe
    * **Chrome Web Store:** [User JavaScript and CSS](https://chromewebstore.google.com/detail/nbhcbdghjpllgmfilhnhkllmkecfmpld)
 2. Open [is.muni.cz](https://is.muni.cz/).
 3. Click the extension icon and click **"Add New"** (or create a new rule for `is.muni.cz`).
-4. In the left panel (the **JS** tab), paste the entire script code.
+4. In the left panel (the **JS** tab), paste the entire script (`script.js`) code.
 5. In the URL targeting settings on the right, ensure the rule matches `is.muni.cz`.
 6. Click **Save**. The script will now execute automatically whenever you browse course directories on IS MUNI.
 
@@ -37,7 +37,7 @@ A dedicated userscript manager that supports automatic script updates.
    * **Firefox Add-ons:** [Tampermonkey for Firefox](https://addons.mozilla.org/firefox/addon/tampermonkey/)
    * **Mac App Store:** [Tampermonkey for Safari](https://apps.apple.com/app/tampermonkey/id1482490089)
 2. Click the extension icon and select **"Create a new script"**.
-3. Replace the template code with the full script, ensuring you have the correct metadata block at the very top:
+3. Replace the template code with the full script (`script.js`), ensuring you have the correct metadata block at the very top:
 
 ```javascript
 // ==UserScript==
@@ -62,7 +62,7 @@ Useful for quick testing without installing extensions.
 
 1. Navigate to any page on [is.muni.cz](https://is.muni.cz/) containing course links.
 2. Open the developer tools by pressing `F12` (or `Ctrl + Shift + J` / `Cmd + Option + J`).
-3. Paste the entire script code into the **Console** tab and press **Enter**.
+3. Paste the entire script (`script.js`) code into the **Console** tab and press **Enter**.
 4. Scroll down to see the loading badges appear as links enter your viewport.
 
 *Note: You can use basically **any** browser extension or add-on that allows you to run custom JavaScript on specific pages. As long as the tool can inject and run this script under the `is.muni.cz` domain, the enhancer will function properly.*
@@ -80,5 +80,7 @@ Unlike the basic userscript, the Web Extension version includes:
 
 To switch to the extension codebase: `git checkout web-extension`
 Or follow https://github.com/Futupas/muni-is-courses-success-rates/tree/web-extension
+
+---
 
 Made with ❤️ by Futupas. If you want to thank me, you can always buy me a beer
