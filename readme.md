@@ -69,4 +69,16 @@ Useful for quick testing without installing extensions.
 
 ---
 
+## Web Extension Branch (`web-extension`)
+
+A fully-featured, production-ready version of this tool is available as a standalone browser extension in the `web-extension` branch. 
+
+Unlike the basic userscript, the Web Extension version includes:
+* **Interactive Toolbar Popup:** A clean UI featuring a native On/Off sliding toggle.
+* **On-the-Fly Cleanup:** Toggling the extension to "Off" instantly removes all custom stylesheets, loading badges, and popup DOM structures, and disconnects all observers without requiring a page reload.
+* **Persistent Settings:** Your preferences are saved automatically using the browser's local storage API.
+
+To switch to the extension codebase: `git checkout web-extension`
+Or follow https://github.com/Futupas/muni-is-courses-success-rates/tree/web-extension
+
 Made with ❤️ by Futupas. If you want to thank me, you can always buy me a beer
